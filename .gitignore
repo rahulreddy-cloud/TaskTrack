@@ -1,0 +1,17 @@
+# Frontend
+tasktrack-frontend/node_modules/
+tasktrack-frontend/dist/
+
+# Backend
+tasktrack-backend/target/
+
+# Local database
+tasktrack-backend/data/
+**/*.mv.db
+**/*.trace.db
+
+# Environment and editor files
+.env
+**/.env
+.vscode/
+.idea/
