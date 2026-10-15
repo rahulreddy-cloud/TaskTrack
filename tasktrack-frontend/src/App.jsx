@@ -1,179 +1,262 @@
+import { useEffect, useState } from "react";
+import "./App.css";
 
-import { useState, useEffect } from 'react';
-import './App.css';
-
-const API = 'http://127.0.0.1:8082/api/tasks';
+const API_URL = "https://tasktrack-backend-rahul.onrender.com/api/tasks";
 
 function App() {
   const [tasks, setTasks] = useState([]);
-  const [taskName, setTaskName] = useState('');
-  const [filter, setFilter] = useState('All');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [title, setTitle] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  async function loadTasks() {
+  // Load tasks from backend
+  const loadTasks = async () => {
     try {
-      const response = await fetch(API);
-      if (!response.ok) throw new Error('Could not load tasks');
-      setTasks(await response.json());
-      setError('');
-    } catch {
-      setError('Cannot connect to backend. Make sure it is running.');
+      setLoading(true);
+
+      const response = await fetch(API_URL);
+
+      if (!response.ok) {
+        throw new Error("Failed to load tasks");
+      }
+
+      const data = await response.json();
+      setTasks(data);
+      setMessage("");
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to connect to backend.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  // Load tasks when website opens
   useEffect(() => {
     loadTasks();
   }, []);
 
-  async function addTask(event) {
-    event.preventDefault();
-    const title = taskName.trim();
-    if (!title) return;
+  // Add new task
+  const addTask = async (e) => {
+    e.preventDefault();
 
-    try {
-      const response = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, completed: false }),
-      });
-      if (!response.ok) throw new Error('Could not add task');
-      setTaskName('');
-      await loadTasks();
-    } catch {
-      setError('Task could not be added. Check the backend.');
+    if (!title.trim()) {
+      setMessage("Please enter a task.");
+      return;
     }
-  }
 
-  async function toggleTask(task) {
     try {
-      const response = await fetch(`${API}/${task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          completed: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add task");
+      }
+
+      const newTask = await response.json();
+
+      setTasks((currentTasks) => [...currentTasks, newTask]);
+      setTitle("");
+      setMessage("");
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to add task.");
+    }
+  };
+
+  // Toggle task completion
+  const toggleTask = async (task) => {
+    try {
+      const response = await fetch(`${API_URL}/${task.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           title: task.title,
           completed: !task.completed,
         }),
       });
-      if (!response.ok) throw new Error('Could not update task');
-      await loadTasks();
-    } catch {
-      setError('Task status could not be updated.');
-    }
-  }
 
-  async function deleteTask(id) {
+      if (!response.ok) {
+        throw new Error("Failed to update task");
+      }
+
+      const updatedTask = await response.json();
+
+      setTasks((currentTasks) =>
+        currentTasks.map((item) =>
+          item.id === updatedTask.id ? updatedTask : item
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to update task.");
+    }
+  };
+
+  // Delete task
+  const deleteTask = async (id) => {
     try {
-      const response = await fetch(`${API}/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
       });
-      if (!response.ok) throw new Error('Could not delete task');
-      await loadTasks();
-    } catch {
-      setError('Task could not be deleted.');
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== id)
+      );
+
+      setMessage("");
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to delete task.");
     }
-  }
+  };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'Pending') return !task.completed;
-    if (filter === 'Completed') return task.completed;
-    return true;
-  });
-
-  const completedCount = tasks.filter((task) => task.completed).length;
-  const pendingCount = tasks.length - completedCount;
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((task) => task.completed).length;
+  const pendingTasks = totalTasks - completedTasks;
 
   return (
     <div className="app">
       <header className="header">
-        <h1>TaskTrack</h1>
-        <p>Your simple student task manager</p>
+        <div>
+          <h1>TaskTrack</h1>
+          <p>Simple. Smart. Organized.</p>
+        </div>
+
+        <button className="refresh-btn" onClick={loadTasks}>
+          ↻ Refresh
+        </button>
       </header>
 
-      <main className="dashboard">
-        {error && <p role="alert">{error}</p>}
+      <main className="container">
+        <section className="hero">
+          <h2>Manage Your Tasks</h2>
+          <p>
+            Keep track of your daily tasks and monitor your progress in one
+            place.
+          </p>
+        </section>
 
         <section className="stats">
           <div className="stat-card">
-            <h3>Total Tasks</h3>
-            <p>{tasks.length}</p>
+            <span className="stat-number">{totalTasks}</span>
+            <span className="stat-label">Total Tasks</span>
           </div>
+
           <div className="stat-card">
-            <h3>Pending</h3>
-            <p>{pendingCount}</p>
+            <span className="stat-number">{pendingTasks}</span>
+            <span className="stat-label">Pending</span>
           </div>
+
           <div className="stat-card">
-            <h3>Completed</h3>
-            <p>{completedCount}</p>
+            <span className="stat-number">{completedTasks}</span>
+            <span className="stat-label">Completed</span>
           </div>
         </section>
 
-        <section className="task-section">
-          <h2>Add a Task</h2>
-          <form className="add-form" onSubmit={addTask}>
+        <section className="add-section">
+          <h2>Add a New Task</h2>
+
+          <form onSubmit={addTask} className="task-form">
             <input
               type="text"
               placeholder="Enter your task..."
-              value={taskName}
-              onChange={(event) => setTaskName(event.target.value)}
-              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-            <button type="submit">Add Task</button>
+
+            <button type="submit">
+              + Add Task
+            </button>
           </form>
+
+          {message && <p className="message">{message}</p>}
         </section>
 
-        <section className="task-section">
-          <div className="task-heading">
+        <section className="tasks-section">
+          <div className="section-heading">
             <h2>My Tasks</h2>
-            <select
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              aria-label="Filter tasks"
-            >
-              <option value="All">All Tasks</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-            </select>
+
+            <span>
+              {totalTasks === 0
+                ? "No tasks"
+                : `${totalTasks} task${totalTasks !== 1 ? "s" : ""}`}
+            </span>
           </div>
 
           {loading ? (
-            <p>Loading tasks...</p>
-          ) : filteredTasks.length === 0 ? (
-            <p className="empty-message">
-              No tasks yet. Add your first task!
-            </p>
+            <div className="empty-state">
+              <h3>Loading tasks...</h3>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">✓</div>
+              <h3>No tasks yet</h3>
+              <p>Add your first task above to get started.</p>
+            </div>
           ) : (
-            <ul className="task-list">
-              {filteredTasks.map((task) => (
-                <li className="task-item" key={task.id}>
-                  <label className="task-label">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => toggleTask(task)}
-                    />
-                    <span className={task.completed ? 'completed' : ''}>
-                      {task.title}
-                    </span>
-                  </label>
+            <div className="task-list">
+              {tasks.map((task) => (
+                <div
+                  className={`task-card ${
+                    task.completed ? "completed" : ""
+                  }`}
+                  key={task.id}
+                >
+                  <div className="task-left">
+                    <button
+                      className={`check-btn ${
+                        task.completed ? "checked" : ""
+                      }`}
+                      onClick={() => toggleTask(task)}
+                      title={
+                        task.completed
+                          ? "Mark as pending"
+                          : "Mark as completed"
+                      }
+                    >
+                      {task.completed ? "✓" : ""}
+                    </button>
+
+                    <div className="task-info">
+                      <h3>{task.title}</h3>
+
+                      <span>
+                        {task.completed ? "Completed" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+
                   <button
-                    className="delete-button"
-                    type="button"
+                    className="delete-btn"
                     onClick={() => deleteTask(task.id)}
+                    title="Delete task"
                   >
-                    Delete
+                    🗑
                   </button>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </main>
 
-      <footer className="footer">
-        <p>TaskTrack | Student Productivity Made Simple</p>
+      <footer>
+        <p>TaskTrack © 2026 | Stay organized, stay productive.</p>
       </footer>
     </div>
   );

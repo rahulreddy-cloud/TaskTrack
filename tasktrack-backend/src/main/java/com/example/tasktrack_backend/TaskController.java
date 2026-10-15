@@ -1,4 +1,3 @@
-
 package com.example.t;
 
 import com.example.t.repository.TaskRepository;
@@ -7,7 +6,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://tasktrack-q5rk.onrender.com"
+})
 public class TaskController {
 
     private final TaskRepository taskRepository;
